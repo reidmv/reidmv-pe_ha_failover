@@ -1,3 +1,13 @@
+# @summary
+#   Temporarily configures pxp-agent with a copy of its certificate
+#   credentials. Intended to be used as an apply() block in a Bolt
+#   plan.
+#
+# @param certname
+#   The certname to use when making a copy of certificate credentials
+# @param config
+#   The JSON string config data to write to pxp-agent.conf
+#
 class pe_ha_failover::temporary_pxp_conf (
   String $certname,
   String $config,
@@ -25,7 +35,7 @@ class pe_ha_failover::temporary_pxp_conf (
   }
 
   file { '/etc/puppetlabs/pxp-agent/tmp/ca.pem':
-    source => "/etc/puppetlabs/puppet/ssl/certs/ca.pem",
+    source => '/etc/puppetlabs/puppet/ssl/certs/ca.pem',
   }
 
   file { '/etc/puppetlabs/pxp-agent/pxp-agent.conf':
