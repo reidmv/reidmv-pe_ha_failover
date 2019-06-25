@@ -10,7 +10,7 @@ plan pe_ha_failover (
   Target.new($replica, name => 'master2_pcp2').add_to_group('pe_ha_failover_pcp2')
   Target.new("local://${replica}", name => 'master2_local').add_to_group('all')
 
-  # Ensure both masters are connected
+  # Check to see if the original master is connected
   $master1_pcp1_connected = wait_until_available('master1_pcp1',
     wait_time       => 0,
     _catch_errors   => true,
