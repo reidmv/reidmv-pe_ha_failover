@@ -9,7 +9,8 @@
 #   The JSON string config data to write to pxp-agent.conf
 #
 class pe_ha_failover::temporary_pxp_conf (
-  String $certname,
+  String $key,
+  String $certificate,
   String $config,
 ) {
 
@@ -27,23 +28,31 @@ class pe_ha_failover::temporary_pxp_conf (
   }
 
   file { '/etc/puppetlabs/pxp-agent/tmp/certificate.pem':
-    source => "/etc/puppetlabs/puppet/ssl/certs/${certname}.pem",
+    content => $certificate,
   }
 
   file { '/etc/puppetlabs/pxp-agent/tmp/key.pem':
-    source => "/etc/puppetlabs/puppet/ssl/private_keys/${certname}.pem",
+    content => $key,
   }
 
   file { '/etc/puppetlabs/pxp-agent/tmp/ca.pem':
     source => '/etc/puppetlabs/puppet/ssl/certs/ca.pem',
   }
 
-  file { '/etc/puppetlabs/pxp-agent/pxp-agent.conf':
+  file { '/etc/puppetlabs/pxp-agent/tmp/pxp-agent.conf':
     content => $config,
   }
 
-  service { 'pxp-agent':
-    ensure => running,
+  service { 'pxp-agent-pseudonym':
+    ensure   => running,
+    provider => systemd,
+    start    => @(EOS/L),
+      systemd-run --unit pxp-agent-pseudonym.service \
+        /opt/puppetlabs/puppet/bin/pxp-agent \
+          --foreground \
+          --pidfile /var/run/puppetlabs/pxp-agent-pseudonym.pid \
+          --config-file /etc/puppetlabs/pxp-agent/tmp/pxp-agent.conf
+      |-EOS
   }
 
 }

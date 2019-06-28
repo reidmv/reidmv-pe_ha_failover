@@ -1,0 +1,11 @@
+{
+  "description": "Generate a new Puppet certificate and return its data",
+  "parameters": {
+    "certname": {
+      "description": "The name of the certificate",
+      "type": "String"
+    }
+  },
+  "files": ["ruby_task_helper/files/task_helper.rb"],
+  "input_method": "stdin"
+}
