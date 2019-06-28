@@ -19,7 +19,7 @@ class pe_ha_failover::temporary_pxp_conf (
     owner  => 'root',
     group  => 'root',
     mode   => '0644',
-    notify => Service['pxp-agent'],
+    notify => Service['pxp-agent-pseudonym'],
   }
 
   file { '/etc/puppetlabs/pxp-agent/tmp':

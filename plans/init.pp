@@ -26,24 +26,24 @@ plan pe_ha_failover (
   if $master1_pcp1_connected {
     # Sanity sync some important content
     $hierayaml = run_task('pe_ha_failover::read_file', 'master1_pcp1',
-      path          => '/etc/puppetlabs/puppet/hiera.yaml',
+      path => '/etc/puppetlabs/puppet/hiera.yaml',
     ).first['content']
 
     run_task('pe_ha_failover::write_file', 'master2_local',
-      path          => '/etc/puppetlabs/puppet/hiera.yaml',
-      content       => $hierayaml,
+      path    => '/etc/puppetlabs/puppet/hiera.yaml',
+      content => $hierayaml,
     )
 
     # Change out the certificate in use by master1. This is because during the
     # promotion process, the master's normal cert will be revoked, rendering it
     # unable to connect to the orchestrator.
-    $certdata = run_task('pe_ha_failover::generate_cert', 'master1_pcp1',
+    $certdata = run_task('pe_ha_failover::generate_certificate', 'master1_pcp1',
       certname => $master1_postpromote,
-    }.first.value
+    ).first.value
 
     # Apply temporary pxp-agent config to ensure connectivity is retained
     # throughout agent re-cert process
-    $master1_orig_pxp_config = run_task('pe_ha_failover::read_file', 'master1_pcp2',
+    $master1_orig_pxp_config = run_task('pe_ha_failover::read_file', 'master1_pcp1',
       path => '/etc/puppetlabs/pxp-agent/pxp-agent.conf',
     ).first['content'].parsejson
     $master1_new_pxp_config = $master1_orig_pxp_config + {
@@ -54,20 +54,21 @@ plan pe_ha_failover (
       'ssl-key'        => '/etc/puppetlabs/pxp-agent/tmp/key.pem',
     }
 
-    apply('master1_pcp2') {
+    apply('master1_pcp1') {
       class { 'pe_ha_failover::temporary_pxp_conf':
-        config   => $master1_new_pxp_config.to_json,
-        certname => $master1_postpromote,
+        key         => $certdata['key'],
+        certificate => $certdata['certificate'],
+        config      => $master1_new_pxp_config.to_json,
       }
     }
 
     wait_until_available($master1_postpromote,
-      wait_time => 30,
+      wait_time => 10,
     )
 
     # This will "fail" because it will shut down the orchestrator service used
     # to connect to the target
-    run_task('enterprise_tasks::disable_all_puppet_services', 'master1_pcp1',
+    run_task('enterprise_tasks::disable_all_puppet_services', $master1_postpromote,
       _catch_errors => true,
     )
   }
