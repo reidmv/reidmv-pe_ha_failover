@@ -56,6 +56,7 @@ plan pe_ha_failover (
 
     apply('master1_pcp1') {
       class { 'pe_ha_failover::temporary_pxp_conf':
+        ensure      => present,
         key         => $certdata['key'],
         certificate => $certdata['certificate'],
         config      => $master1_new_pxp_config.to_json,
