@@ -19,7 +19,7 @@ class pe_ha_failover::temporary_pxp_conf (
     owner  => 'root',
     group  => 'root',
     mode   => '0644',
-    notify => Service['pxp-agent-pseudonym'],
+    notify => Service['pxp-agent-double'],
   }
 
   file { '/etc/puppetlabs/pxp-agent/tmp':
@@ -43,14 +43,14 @@ class pe_ha_failover::temporary_pxp_conf (
     content => $config,
   }
 
-  service { 'pxp-agent-pseudonym':
+  service { 'pxp-agent-double':
     ensure   => running,
     provider => systemd,
     start    => @(EOS/L),
-      systemd-run --unit pxp-agent-pseudonym.service \
+      systemd-run --unit pxp-agent-double.service \
         /opt/puppetlabs/puppet/bin/pxp-agent \
           --foreground \
-          --pidfile /var/run/puppetlabs/pxp-agent-pseudonym.pid \
+          --pidfile /var/run/puppetlabs/pxp-agent-double.pid \
           --config-file /etc/puppetlabs/pxp-agent/tmp/pxp-agent.conf
       |-EOS
   }

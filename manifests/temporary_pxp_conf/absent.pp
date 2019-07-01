@@ -4,7 +4,7 @@ class pe_ha_failover::temporary_pxp_conf::absent {
     force  => true,
   }
 
-  service { 'pxp-agent-pseudonym':
+  service { 'pxp-agent-double':
     ensure => stopped,
   }
 }

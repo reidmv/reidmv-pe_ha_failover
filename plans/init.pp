@@ -4,24 +4,19 @@ plan pe_ha_failover (
 ) {
   # Set up targets for reaching the endpoints we need to over the transports we
   # want to, as appropriate
-  Target.new($master,               name => 'master1_pcp1').add_to_group('pe_ha_failover_pcp1')
-  Target.new($master,               name => 'master1_pcp2').add_to_group('pe_ha_failover_pcp2')
-  Target.new("${master}-pseudonym", name => 'master1_pcp2_pseudonym').add_to_group('pe_ha_failover_pcp2')
-  Target.new($replica,              name => 'master2_pcp1').add_to_group('pe_ha_failover_pcp1')
-  Target.new($replica,              name => 'master2_pcp2').add_to_group('pe_ha_failover_pcp2')
-  Target.new("local://${replica}",  name => 'master2_local').add_to_group('all')
+  Target.new($master,              name => 'master1_pcp1').add_to_group('pe_ha_failover_pcp1')
+  Target.new($master,              name => 'master1_pcp2').add_to_group('pe_ha_failover_pcp2')
+  Target.new("${master}-double",   name => 'master1_double_pcp1').add_to_group('pe_ha_failover_pcp1')
+  Target.new("${master}-double",   name => 'master1_double_pcp2').add_to_group('pe_ha_failover_pcp2')
+  Target.new($replica,             name => 'master2_pcp1').add_to_group('pe_ha_failover_pcp1')
+  Target.new($replica,             name => 'master2_pcp2').add_to_group('pe_ha_failover_pcp2')
+  Target.new("local://${replica}", name => 'master2_local').add_to_group('all')
 
   # Check to see if the original master is connected
   $master1_pcp1_connected = wait_until_available('master1_pcp1',
     wait_time       => 0,
     _catch_errors   => true,
   ).ok
-
-  # How do we / should we connect to master1 after replica promotion?
-  $master1_postpromote = $master1_pcp1_connected ? {
-    true  => "${master}-pseudonym",
-    false => [ ],
-  }
 
   if $master1_pcp1_connected {
     # Sanity sync some important content
@@ -38,7 +33,7 @@ plan pe_ha_failover (
     # promotion process, the master's normal cert will be revoked, rendering it
     # unable to connect to the orchestrator.
     $certdata = run_task('pe_ha_failover::generate_certificate', 'master1_pcp1',
-      certname => $master1_postpromote,
+      certname => "${master}-double",
     ).first.value
 
     # Apply temporary pxp-agent config to ensure connectivity is retained
@@ -59,13 +54,13 @@ plan pe_ha_failover (
       }
     }
 
-    wait_until_available($master1_postpromote,
+    wait_until_available('master1_double_pcp1',
       wait_time => 180,
     )
 
     # This will "fail" when services start going down, interrupting things like
     # RBAC validation to retrieve job status.
-    run_task('enterprise_tasks::disable_all_puppet_services', $master1_postpromote,
+    run_task('enterprise_tasks::disable_all_puppet_services', 'master1_double_pcp1',
       _catch_errors => true,
     )
   }
@@ -85,20 +80,20 @@ plan pe_ha_failover (
     |-EOS
 
   # Ensure both masters are connected
-  wait_until_available([$master1_postpromote, 'master2_pcp2'],
+  wait_until_available(['master1_double_pcp2', 'master2_pcp2'],
     wait_time => 180,
   )
 
   # Restore the old master as the new replica
   run_plan('enterprise_tasks::enable_ha_failover',
-    host              => $master1_postpromote,
+    host              => 'master1_double_pcp2',
     caserver          => 'master2_local',
     topology          => 'mono-with-compile',
     skip_agent_config => true,
   )
 
-  run_command('rm -rf /etc/puppetlabs/pxp-agent/tmp', 'master1_pcp2')
   run_command('systemctl stop pxp-agent-pseudonym', 'master1_pcp2')
+  run_command('rm -rf /etc/puppetlabs/pxp-agent/tmp', 'master1_pcp2')
 
   return('plan complete')
 }
