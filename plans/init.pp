@@ -43,32 +43,28 @@ plan pe_ha_failover (
 
     # Apply temporary pxp-agent config to ensure connectivity is retained
     # throughout agent re-cert process
-    $master1_orig_pxp_config = run_task('pe_ha_failover::read_file', 'master1_pcp1',
+    $pxp_config = run_task('pe_ha_failover::read_file', 'master1_pcp1',
       path => '/etc/puppetlabs/pxp-agent/pxp-agent.conf',
-    ).first['content'].parsejson
-    $master1_new_pxp_config = $master1_orig_pxp_config + {
-      # 'broker-ws-uris' => $master1_orig_pxp_config['broker-ws-uris'].reverse_each,
-      # 'master-uris'    => $master1_orig_pxp_config['master-uris'].reverse_each,
-      'ssl-ca-cert'    => '/etc/puppetlabs/pxp-agent/tmp/ca.pem',
-      'ssl-cert'       => '/etc/puppetlabs/pxp-agent/tmp/certificate.pem',
-      'ssl-key'        => '/etc/puppetlabs/pxp-agent/tmp/key.pem',
+    ).first['content'].parsejson + {
+      'ssl-ca-cert' => '/etc/puppetlabs/pxp-agent/tmp/ca.pem',
+      'ssl-cert'    => '/etc/puppetlabs/pxp-agent/tmp/certificate.pem',
+      'ssl-key'     => '/etc/puppetlabs/pxp-agent/tmp/key.pem',
     }
 
     apply('master1_pcp1') {
       class { 'pe_ha_failover::temporary_pxp_conf':
-        ensure      => present,
         key         => $certdata['key'],
         certificate => $certdata['certificate'],
-        config      => $master1_new_pxp_config.to_json,
+        config      => $pxp_config.to_json,
       }
     }
 
     wait_until_available($master1_postpromote,
-      wait_time => 10,
+      wait_time => 180,
     )
 
-    # This will "fail" because it will shut down the orchestrator service used
-    # to connect to the target
+    # This will "fail" when services start going down, interrupting things like
+    # RBAC validation to retrieve job status.
     run_task('enterprise_tasks::disable_all_puppet_services', $master1_postpromote,
       _catch_errors => true,
     )
@@ -89,20 +85,20 @@ plan pe_ha_failover (
     |-EOS
 
   # Ensure both masters are connected
-  wait_until_available(['master1_pcp2', 'master2_pcp2'],
-    wait_time     => 180,
-    _catch_errors => true,
+  wait_until_available([$master1_postpromote, 'master2_pcp2'],
+    wait_time => 180,
   )
 
   # Restore the old master as the new replica
   run_plan('enterprise_tasks::enable_ha_failover',
-    host              => 'master1_pcp2',
+    host              => $master1_postpromote,
     caserver          => 'master2_local',
     topology          => 'mono-with-compile',
     skip_agent_config => true,
   )
 
   run_command('rm -rf /etc/puppetlabs/pxp-agent/tmp', 'master1_pcp2')
+  run_command('systemctl stop pxp-agent-pseudonym', 'master1_pcp2')
 
   return('plan complete')
 }
