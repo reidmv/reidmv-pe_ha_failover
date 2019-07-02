@@ -1,0 +1,11 @@
+{
+  "description": "Disable the Puppet agent for a set period of time",
+  "parameters": {
+    "duration": {
+      "description": "How long to disable the Puppet agent, as a systemd-run compatible string",
+      "type": "String"
+    }
+  },
+  "files": ["ruby_task_helper/files/task_helper.rb"],
+  "input_method": "stdin"
+}
