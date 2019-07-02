@@ -92,8 +92,10 @@ plan pe_ha_failover (
     skip_agent_config => true,
   )
 
-  run_command('systemctl stop pxp-agent-pseudonym', 'master1_pcp2')
-  run_command('rm -rf /etc/puppetlabs/pxp-agent/tmp', 'master1_pcp2')
+  run_command(@(EOS/L), 'master1_pcp2')
+    systemctl stop pxp-agent-double; \
+    rm -rf /etc/puppetlabs/pxp-agent/tmp
+    |-EOS
 
   return('plan complete')
 }
