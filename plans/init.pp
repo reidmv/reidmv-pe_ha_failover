@@ -1,16 +1,27 @@
 plan pe_ha_failover (
-  String $master,
-  String $replica,
+  TargetSpec $master,
+  TargetSpec $replica,
 ) {
+  $spec1 = get_targets($master)
+  $spec2 = get_targets($replica)
+
+  assert_type(Array[Target, 1, 1], $spec1) |$_, $actual| {
+    out::message("Expected master to be a single target; got ${actual.map |$t| {$t.name}}") }
+  assert_type(Array[Target, 1, 1], $spec2) |$_, $actual| {
+    out::message("Expected replica to be a single target; got ${actual.map |$t| {$t.name}}") }
+
+  $master1 = $spec1[0].host
+  $master2 = $spec2[0].host
+
   # Set up targets for reaching the endpoints we need to over the transports we
   # want to, as appropriate
-  Target.new($master,              name => 'master1_pcp1').add_to_group('pe_ha_failover_pcp1')
-  Target.new($master,              name => 'master1_pcp2').add_to_group('pe_ha_failover_pcp2')
-  Target.new("${master}-double",   name => 'master1_double_pcp1').add_to_group('pe_ha_failover_pcp1')
-  Target.new("${master}-double",   name => 'master1_double_pcp2').add_to_group('pe_ha_failover_pcp2')
-  Target.new($replica,             name => 'master2_pcp1').add_to_group('pe_ha_failover_pcp1')
-  Target.new($replica,             name => 'master2_pcp2').add_to_group('pe_ha_failover_pcp2')
-  Target.new("local://${replica}", name => 'master2_local').add_to_group('all')
+  Target.new($master1,             name => 'master1_pcp1').add_to_group('pe_ha_failover_pcp1')
+  Target.new($master1,             name => 'master1_pcp2').add_to_group('pe_ha_failover_pcp2')
+  Target.new("${master1}-double",  name => 'master1_double_pcp1').add_to_group('pe_ha_failover_pcp1')
+  Target.new("${master1}-double",  name => 'master1_double_pcp2').add_to_group('pe_ha_failover_pcp2')
+  Target.new($master2,             name => 'master2_pcp1').add_to_group('pe_ha_failover_pcp1')
+  Target.new($master2,             name => 'master2_pcp2').add_to_group('pe_ha_failover_pcp2')
+  Target.new("local://${master2}", name => 'master2_local').add_to_group('all')
 
   # Check to see if the original master is connected
   $master1_pcp1_connected = wait_until_available('master1_pcp1',
@@ -69,12 +80,12 @@ plan pe_ha_failover (
   run_command(@("EOS"/L), 'master2_local')
     /opt/puppetlabs/bin/puppet infra promote replica \
     --topology mono-with-compile \
-    --classifier-termini ${replica}:4433 \
-    --puppetdb-termini ${replica}:8081 \
-    --infra-agent-server-urls ${replica}:8140 \
-    --infra-pcp-brokers ${replica}:8142 \
-    --agent-server-urls ${replica}:8140 \
-    --pcp-brokers ${replica}:8142 \
+    --classifier-termini ${master2}:4433 \
+    --puppetdb-termini ${master2}:8081 \
+    --infra-agent-server-urls ${master2}:8140 \
+    --infra-pcp-brokers ${master2}:8142 \
+    --agent-server-urls ${master2}:8140 \
+    --pcp-brokers ${master2}:8142 \
     --skip-agent-config \
     --yes
     |-EOS
