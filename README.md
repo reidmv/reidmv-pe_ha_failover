@@ -80,11 +80,30 @@ Untested =❓
 
 Example usage:
 
+To ensure best results, quiesce the Puppet agent on relevent systems first. This includes the master, the replica, and database nodes in some architectures.
+
+```
+bolt task run pe_ha_failover::pause_puppet_agent \
+  duration=30m \
+  --target master-1.example.com \
+  --target master-2.example.com \
+  --target pdb-postgresql-1.example.com \
+  --target pdb-postgresql-2.example.com
+```
+
+With the Puppet agent paused on these systems, perform the failover.
+
 ```
 bolt plan run pe_ha_failover \
   --inventoryfile inventory.yaml \
   master=master-1.puppet.vm \
   replica=master-2.puppet.vm
+```
+
+For PE Extra Large deployments where Bolt is configured to use PuppetDB, parameters for healthy failover can be auto-identifed and the appropriate nodes' Puppet agents paused without additional user input required. This is not the default way to perform failover because if the master is unavailable, the ability to look this information up automatically is constrained prior to PE 2018.1.9.
+
+```
+bolt plan run pe_ha_failover::pe_xl
 ```
 
 ## Limitations
