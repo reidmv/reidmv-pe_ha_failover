@@ -7,6 +7,8 @@ class PausePuppetAgent < TaskHelper
   def task(duration:, **kwargs) 
 
     # Schedule the service to start back up later
+    # Stop an existing timer if it exists
+    system('systemctl status puppet.timer') && system('systemctl stop puppet.timer')
     output, status = Open3.capture2('systemd-run', "--on-active=#{duration}", '--unit', 'puppet.service')
     raise TaskHelper::Error.new('Failed to schedule re-enable action for Puppet agent',
                                 'pe_ha_failover/task-error',
