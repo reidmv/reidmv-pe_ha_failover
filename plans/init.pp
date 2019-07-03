@@ -103,11 +103,14 @@ plan pe_ha_failover (
     skip_agent_config => true,
   )
 
-  run_command("puppet node purge ${master1}-double", 'master2_local')
-  run_command(@("EOS"/L), 'master1_pcp2')
+  run_command(@("EOS"/L), 'master2_local')
+    puppet node purge ${master1}-double;
     find /etc/puppetlabs/puppet/ssl -name ${master1}-double.pem -delete; \
+    |-EOS
+  run_command(@("EOS"/L), 'master1_pcp2')
     systemctl stop pxp-agent-double; \
     rm -rf /etc/puppetlabs/pxp-agent/tmp
+    find /etc/puppetlabs/puppet/ssl -name ${master1}-double.pem -delete; \
     |-EOS
 
   return('plan complete')
