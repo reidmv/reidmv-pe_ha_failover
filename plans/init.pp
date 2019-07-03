@@ -44,7 +44,7 @@ plan pe_ha_failover (
     # promotion process, the master's normal cert will be revoked, rendering it
     # unable to connect to the orchestrator.
     $certdata = run_task('pe_ha_failover::generate_certificate', 'master1_pcp1',
-      certname => "${master}-double",
+      certname => "${master1}-double",
     ).first.value
 
     # Apply temporary pxp-agent config to ensure connectivity is retained
